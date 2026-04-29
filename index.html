@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crecer entre algoritmos · El Club de las Preguntas</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: sans-serif; font-size: 16px; background: #f0ede8; min-height: 100vh; display: flex; justify-content: center; padding: 20px 12px 40px; }
+#app { width: 100%; max-width: 560px; }
+#game { background: #faf8f5; border-radius: 16px; padding: 24px 20px; min-height: 500px; }
+.screen { display: none; flex-direction: column; align-items: center; gap: 18px; }
+.screen.active { display: flex; }
+.progress-bar { width: 100%; max-width: 500px; height: 8px; background: #e8e4e0; border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; background-color: #81667A; }
+.character-row { display: flex; align-items: flex-end; gap: 14px; width: 100%; max-width: 500px; }
+.avatar { font-size: 48px; line-height: 1; flex-shrink: 0; }
+.comic-bubble { position: relative; background: white; border: 2.5px solid #92B4A7; border-radius: 16px; padding: 14px 18px; font-size: 16px; line-height: 1.65; color: #2e2a35; max-width: 400px; flex: 1; }
+.comic-bubble::after { content: ''; position: absolute; bottom: 16px; left: -14px; width: 0; height: 0; border-top: 8px solid transparent; border-bottom: 8px solid transparent; border-right: 14px solid #92B4A7; }
+.comic-bubble::before { content: ''; position: absolute; bottom: 17px; left: -11px; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-right: 12px solid white; z-index: 1; }
+.info-box { background: white; border: 2px solid #B6CB9E; border-radius: 14px; padding: 16px 18px; font-size: 15px; line-height: 1.7; color: #2e2a35; max-width: 500px; width: 100%; }
+.title-main { font-size: 22px; font-weight: 500; color: #2e2a35; text-align: center; }
+.subtitle { font-size: 15px; color: #5a5265; text-align: center; line-height: 1.65; max-width: 420px; }
+.hint { font-size: 13px; color: #8C8A93; text-align: center; font-style: italic; }
+.options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 500px; }
+.feedback-box { background: white; border-left: 4px solid #92B4A7; border-radius: 10px; padding: 14px 16px; font-size: 15px; line-height: 1.65; color: #2e2a35; max-width: 500px; width: 100%; }
+.feedback-box.wrong { border-left-color: #c0392b; }
+.challenge-box { border-radius: 16px; padding: 22px 20px; max-width: 500px; width: 100%; text-align: center; background-color: #81667A; }
+.challenge-box .ch-title { font-size: 17px; font-weight: 500; margin-bottom: 10px; color: white; }
+.challenge-box .ch-text { font-size: 15px; line-height: 1.7; color: rgba(255,255,255,0.93); }
+.stars { font-size: 32px; letter-spacing: 6px; }
+.copyright { font-size: 12px; color: #8C8A93; text-align: center; margin-top: 4px; }
+.star-pop { position: fixed; font-size: 28px; pointer-events: none; animation: starFloat 0.9s ease forwards; z-index: 999; }
+@keyframes bounce { 0%{transform:scale(1)} 40%{transform:scale(1.06)} 70%{transform:scale(0.97)} 100%{transform:scale(1)} }
+@keyframes starFloat { 0%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-60px) scale(1.4)} }
+.opt-bounce { animation: bounce 0.4s ease; }
+.level-badge { background-color: #81667A; color: #ffffff; border-radius: 20px; padding: 5px 16px; font-size: 13px; font-weight: 500; align-self: flex-start; }
+.btn-main { background-color: #81667A; color: #ffffff; border: none; border-radius: 12px; padding: 13px 30px; font-size: 16px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 0 #5a4558; }
+.btn-main:active { transform: translateY(2px); box-shadow: none; }
+.btn-green { background-color: #92B4A7; color: #ffffff; border: none; border-radius: 12px; padding: 13px 30px; font-size: 16px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 0 #6a8f84; }
+.btn-light { background-color: #B6CB9E; color: #2e2a35; border: none; border-radius: 12px; padding: 11px 22px; font-size: 14px; font-weight: 500; cursor: pointer; }
+
+/* Level selector */
+.level-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 500px; }
+.level-card { background: white; border: 2px solid #B6CB9E; border-radius: 14px; padding: 18px 14px; text-align: center; cursor: pointer; transition: all 0.2s; }
+.level-card:hover { border-color: #81667A; background: #f5f0f3; }
+.level-card .lc-num { font-size: 28px; margin-bottom: 6px; }
+.level-card .lc-title { font-size: 14px; font-weight: 500; color: #81667A; margin-bottom: 4px; }
+.level-card .lc-desc { font-size: 12px; color: #5a5265; line-height: 1.4; }
+.level-card.completed { border-color: #92B4A7; background: #D1F0B1; }
+.level-card.completed .lc-title { color: #2d5a3d; }
+
+/* Sort */
+.sort-source { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; max-width: 500px; }
+.sort-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 500px; }
+.sort-col { background: white; border: 2.5px solid #B6CB9E; border-radius: 12px; padding: 12px; min-height: 110px; cursor: pointer; transition: border-color 0.2s; }
+.sort-col:hover { border-color: #81667A; }
+.sort-col.highlight { border-color: #81667A !important; background: #f5f0f3 !important; }
+.sort-col-title { font-size: 14px; font-weight: 500; color: #81667A; margin-bottom: 8px; text-align: center; }
+.sort-placed-items { display: flex; flex-direction: column; gap: 6px; min-height: 50px; }
+
+/* Match */
+.match-grid { width: 100%; max-width: 500px; display: grid; grid-template-columns: 1fr 28px 1fr; gap: 0; }
+.match-left-cell { padding: 4px 0; }
+.match-arrow-cell { display: flex; align-items: center; justify-content: center; font-size: 16px; color: #B6CB9E; padding: 4px 0; }
+.match-right-cell { padding: 4px 0; }
+
+/* TF */
+.tf-stack { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 500px; }
+.tf-card { background: white; border: 2px solid #B6CB9E; border-radius: 14px; padding: 16px 16px 12px; display: flex; flex-direction: column; gap: 10px; }
+.tf-statement { font-size: 15px; color: #2e2a35; line-height: 1.6; font-style: italic; }
+.tf-btns { display: flex; gap: 10px; }
+.tf-feedback { font-size: 14px; line-height: 1.55; padding: 8px 10px; border-radius: 8px; display: none; }
+.tf-feedback.correct { background: #D1F0B1; color: #2d5a3d; border-left: 3px solid #92B4A7; }
+.tf-feedback.wrong2 { background: #fdecea; color: #922b21; border-left: 3px solid #c0392b; }
+
+/* Scenarios / decisions */
+.scenario-stack { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 500px; }
+.scenario-card { background: white; border: 2px solid #B6CB9E; border-radius: 14px; padding: 16px 16px 12px; display: flex; flex-direction: column; gap: 10px; }
+.scenario-text { font-size: 15px; color: #2e2a35; line-height: 1.6; }
+.scenario-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.scenario-fb { font-size: 14px; line-height: 1.55; padding: 8px 10px; border-radius: 8px; display: none; }
+.scenario-fb.correct { background: #D1F0B1; color: #2d5a3d; border-left: 3px solid #92B4A7; }
+.scenario-fb.wrong2 { background: #fdecea; color: #922b21; border-left: 3px solid #c0392b; }
+
+/* Steps row (N2) */
+.steps-row { display: flex; gap: 6px; width: 100%; max-width: 500px; align-items: stretch; }
+.step-card { flex: 1; border-radius: 12px; padding: 14px 10px; text-align: center; border: 2px solid #B6CB9E; background: white; }
+.step-icon { font-size: 26px; margin-bottom: 6px; }
+.step-title { font-size: 13px; font-weight: 500; color: #81667A; margin-bottom: 4px; }
+.step-desc { font-size: 12px; color: #5a5265; line-height: 1.5; }
+.step-arrow { display: flex; align-items: center; font-size: 18px; color: #92B4A7; font-weight: 500; flex-shrink: 0; }
+
+/* Compare grid (N3) */
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 500px; }
+.compare-card { border-radius: 12px; padding: 14px 12px; border: 2px solid #B6CB9E; background: white; }
+.compare-title { font-size: 13px; font-weight: 500; color: #81667A; margin-bottom: 8px; text-align: center; }
+.compare-item { font-size: 13px; color: #2e2a35; line-height: 1.6; padding: 4px 0; border-bottom: 1px solid #f0ede8; }
+.compare-item:last-child { border-bottom: none; }
+
+/* Problems grid (N4) */
+.problems-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 500px; }
+.problem-card { background: white; border: 2px solid #B6CB9E; border-radius: 12px; padding: 14px 12px; text-align: center; }
+.problem-icon { font-size: 24px; margin-bottom: 6px; }
+.problem-title { font-size: 13px; font-weight: 500; color: #81667A; margin-bottom: 4px; }
+.problem-desc { font-size: 12px; color: #5a5265; line-height: 1.5; }
+
+/* Badge */
+.name-input { background: white; border: 2px solid #92B4A7; border-radius: 10px; padding: 12px 16px; font-size: 16px; color: #2e2a35; width: 100%; max-width: 360px; outline: none; }
+.name-input:focus { border-color: #81667A; }
+.share-note { font-size: 14px; color: #5a5265; text-align: center; max-width: 400px; line-height: 1.6; background: white; border: 2px solid #B6CB9E; border-radius: 12px; padding: 12px 16px; }
+</style>
+</head>
+<body>
+<div id="app">
+<div id="game">
+
+<!-- HOME -->
+<div class="screen active" id="home">
+  <div style="text-align:center;">
+    <div style="font-size:48px;margin-bottom:8px;">🔍</div>
+    <div class="title-main">El Club de las Preguntas</div>
+    <div style="font-size:13px;color:#92B4A7;font-weight:500;margin-top:4px;">Crecer entre algoritmos</div>
+  </div>
+  <div class="subtitle">Acompaña a María y sus amigos a descubrir qué es la inteligencia artificial, cómo funciona y cómo usarla con criterio.</div>
+  <div class="level-grid" id="level-grid"></div>
+  <div class="copyright">Recurso diseñado por Camila Suárez Acevedo © 2026 · Todos los derechos reservados</div>
+</div>
+
+<!-- NIVEL 1 -->
+<div class="screen" id="n1-intro">
+  <div class="level-badge">Nivel 1 · ¿Qué es la IA?</div>
+  <div class="title-main">El club de las preguntas</div>
+  <div class="subtitle">Acompaña a María en su primer día en el club más curioso del colegio.</div>
+  <div class="character-row"><div class="avatar">👧🏽</div><div class="comic-bubble">¡Hola! Soy María. Hoy empecé el Club de las Preguntas en mi colegio y ya tenemos un gran misterio que resolver: ¿qué es eso que llaman inteligencia artificial?</div></div>
+  <button class="btn-main" onclick="pc();goTo('n1-s1')">¡Vamos a descubrirlo!</button>
+  <div class="copyright">Recurso diseñado por Camila Suárez Acevedo © 2026 · Todos los derechos reservados</div>
+</div>
+<div class="screen" id="n1-s1">
+  <div class="level-badge">Momento 1 · Concepto</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:15%"></div></div>
+  <div class="character-row"><div class="avatar">👨🏽‍🏫</div><div class="comic-bubble">La IA no es un robot mágico. Es una herramienta que <strong>personas</strong> diseñaron, entrenaron y decidieron usar.</div></div>
+  <div class="info-box">Así como tú aprendes a leer practicando todos los días, una computadora puede aprender a reconocer fotos de gatos si le mostramos miles de fotos.<br><br>Alguien tiene que elegir qué fotos mostrarle. Ese alguien siempre es una <strong>persona</strong>.</div>
+  <button class="btn-main" onclick="pc();goTo('n1-s2')">Entendido, ¡siguiente!</button>
+</div>
+<div class="screen" id="n1-s2">
+  <div class="level-badge">Momento 1 · ¿Qué aprendiste?</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:30%"></div></div>
+  <div class="character-row"><div class="avatar">👦🏿</div><div class="comic-bubble">Tomás dice algo en el club. ¿Tiene razón?</div></div>
+  <div class="info-box" style="font-style:italic;background:#f5f5f5;border-color:#ccc;">"La inteligencia artificial es un robot súper inteligente que piensa solo, sin ayuda de nadie."</div>
+  <div class="options-grid" id="n1-q1-opts"></div>
+  <div class="feedback-box" id="n1-fb-q1" style="display:none"></div>
+  <button class="btn-main" id="n1-next-q1" style="display:none" onclick="pc();goTo('n1-s3')">Continuar</button>
+</div>
+<div class="screen" id="n1-s3">
+  <div class="level-badge">Momento 2 · ¿Dónde está la IA?</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:45%"></div></div>
+  <div class="character-row"><div class="avatar">👨🏽‍🏫</div><div class="comic-bubble">La IA ya está en muchas cosas que usamos todos los días, aunque no lo notemos. ¡Y siempre hay personas detrás de cada una!</div></div>
+  <div class="info-box">Cuando YouTube te recomienda un video, cuando tu teléfono desbloquea con tu cara, cuando un juego aprende en qué nivel eres bueno... todas esas cosas las hicieron <strong>equipos de personas</strong>.</div>
+  <button class="btn-main" onclick="pc();goTo('n1-s4')">¡A clasificar!</button>
+</div>
+<div class="screen" id="n1-s4">
+  <div class="level-badge">Momento 2 · Clasifica con María</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:60%"></div></div>
+  <div class="character-row"><div class="avatar">👧🏽</div><div class="comic-bubble">Toca una tarjeta para seleccionarla, luego toca la columna donde quieres ponerla.</div></div>
+  <div class="hint">Toca una tarjeta → luego toca la columna</div>
+  <div class="sort-source" id="n1-sort-source"></div>
+  <div class="sort-columns">
+    <div class="sort-col" id="n1-col-ia" onclick="pc();n1DropToCol('ia')"><div class="sort-col-title">Usa IA</div><div class="sort-placed-items" id="n1-placed-ia"></div></div>
+    <div class="sort-col" id="n1-col-no" onclick="pc();n1DropToCol('no')"><div class="sort-col-title">No usa IA</div><div class="sort-placed-items" id="n1-placed-no"></div></div>
+  </div>
+  <div class="feedback-box" id="n1-fb-sort" style="display:none"></div>
+  <button class="btn-main" id="n1-check-sort" style="display:none" onclick="pc();n1CheckSort()">Revisar</button>
+  <button class="btn-main" id="n1-next-sort" style="display:none" onclick="pc();goTo('n1-s5')">Continuar</button>
+</div>
+<div class="screen" id="n1-s5">
+  <div class="level-badge">Momento 3 · Reflexión</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:80%"></div></div>
+  <div class="character-row"><div class="avatar">👧🏻</div><div class="comic-bubble">Ana hace una gran pregunta al club:</div></div>
+  <div class="info-box" style="font-style:italic;background:#f5f5f5;border-color:#ccc;">"Si la IA la crean personas... ¿eso significa que puede cometer los mismos errores que cometemos las personas?"</div>
+  <div class="options-grid" id="n1-q2-opts"></div>
+  <div class="feedback-box" id="n1-fb-q2" style="display:none"></div>
+  <button class="btn-main" id="n1-next-q2" style="display:none" onclick="pc();goTo('n1-final')">Ver el reto final</button>
+</div>
+<div class="screen" id="n1-final">
+  <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+  <div class="stars">⭐⭐⭐</div>
+  <div class="title-main">¡Completaste el nivel 1!</div>
+  <div class="info-box" style="text-align:center;">Aprendiste que la IA es una herramienta creada, entrenada y usada por personas. Que ya está en muchos lugares de tu vida. Y que, como la hacen personas, también puede tener errores.</div>
+  <div class="challenge-box">
+    <div class="ch-title">🎯 Tu reto fuera del juego</div>
+    <div class="ch-text">Busca a un adulto de confianza (mamá, papá, abuela o abuelo, tía o tío) y pregúntale:<br><br><em>"¿En qué momentos del día crees que usas inteligencia artificial sin darte cuenta?"</em></div>
+  </div>
+  <button class="btn-green" onclick="pc();completeLevel(1);goTo('home')">Volver al inicio</button>
+  <div class="copyright">Recurso diseñado por Camila Suárez Acevedo © 2026 · Todos los derechos reservados</div>
+</div>
+
+<!-- NIVEL 2 -->
+<div class="screen" id="n2-intro">
+  <div class="level-badge">Nivel 2 · ¿Cómo aprende una máquina?</div>
+  <div class="title-main">El laboratorio de datos</div>
+  <div class="subtitle">El club descubre cómo las computadoras pueden aprender. ¡No es magia, es trabajo humano!</div>
+  <div class="character-row"><div class="avatar">👧🏽</div><div class="comic-bubble">¡Hola de nuevo! Hoy el profe Miguel nos trajo al laboratorio del colegio. Vamos a entender cómo una máquina puede "aprender" algo.</div></div>
+  <button class="btn-main" onclick="pc();goTo('n2-s1')">¡Entremos al laboratorio!</button>
+  <div class="copyright">Recurso diseñado por Camila Suárez Acevedo © 2026 · Todos los derechos reservados</div>
+</div>
+<div class="screen" id="n2-s1">
+  <div class="level-badge">Momento 1 · Concepto</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:15%"></div></div>
+  <div class="character-row"><div class="avatar">👨🏽‍🏫</div><div class="comic-bubble">Para que una máquina aprenda, necesita tres cosas: <strong>datos</strong>, un <strong>algoritmo</strong> y mucha práctica. ¡Y personas que lo organicen todo!</div></div>
+  <div class="info-box">Imagina que quieres enseñarle a una computadora a reconocer perros.<br><br>Primero le muestras miles de fotos — esos son los <strong>datos</strong>.<br><br>Luego le das instrucciones sobre cómo buscar patrones — ese es el <strong>algoritmo</strong>.<br><br>La computadora practica una y otra vez — eso se llama <strong>entrenamiento</strong>.<br><br>Todo esto lo diseñaron y organizaron <strong>personas</strong>.</div>
+  <button class="btn-main" onclick="pc();goTo('n2-s2')">Entendido, ¡siguiente!</button>
+</div>
+<div class="screen" id="n2-s2">
+  <div class="level-badge">Momento 1 · Los tres pasos</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:28%"></div></div>
+  <div class="character-row"><div class="avatar">👧🏻</div><div class="comic-bubble">Ana resumió los tres pasos. ¿La revisamos juntos?</div></div>
+  <div class="steps-row">
+    <div class="step-card"><div class="step-icon">📦</div><div class="step-title">Datos</div><div class="step-desc">La materia prima. Fotos, textos y números que personas recopilan.</div></div>
+    <div class="step-arrow">→</div>
+    <div class="step-card"><div class="step-icon">⚙️</div><div class="step-title">Algoritmo</div><div class="step-desc">Las instrucciones que le dicen a la máquina cómo buscar patrones.</div></div>
+    <div class="step-arrow">→</div>
+    <div class="step-card"><div class="step-icon">🎓</div><div class="step-title">Entrenamiento</div><div class="step-desc">La práctica. La máquina repite hasta mejorar sus respuestas.</div></div>
+  </div>
+  <button class="btn-main" onclick="pc();goTo('n2-s3')">¡A practicar!</button>
+</div>
+<div class="screen" id="n2-s3">
+  <div class="level-badge">Momento 1 · ¿Qué aprendiste?</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:45%"></div></div>
+  <div class="character-row"><div class="avatar">👦🏿</div><div class="comic-bubble">Tomás tiene una pregunta para el club. ¿Sabes la respuesta?</div></div>
+  <div class="info-box" style="font-style:italic;background:#f5f5f5;border-color:#ccc;">"Si una persona le muestra a una computadora solo fotos de perros blancos, ¿qué problema podría tener cuando vea un perro negro?"</div>
+  <div class="options-grid" id="n2-q1-opts"></div>
+  <div class="feedback-box" id="n2-fb-q1" style="display:none"></div>
+  <button class="btn-main" id="n2-next-q1" style="display:none" onclick="pc();goTo('n2-s4')">Continuar</button>
+</div>
+<div class="screen" id="n2-s4">
+  <div class="level-badge">Momento 2 · Conecta los conceptos</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:62%"></div></div>
+  <div class="character-row"><div class="avatar">👧🏽</div><div class="comic-bubble">Toca un concepto y luego su descripción para unirlos.</div></div>
+  <div class="hint">Toca un concepto → luego toca su descripción</div>
+  <div class="match-grid" id="n2-match-grid"></div>
+  <div class="feedback-box" id="n2-fb-match" style="display:none"></div>
+  <button class="btn-main" id="n2-next-match" style="display:none" onclick="pc();goTo('n2-s5')">Continuar</button>
+</div>
+<div class="screen" id="n2-s5">
+  <div class="level-badge">Momento 3 · Reflexión</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:82%"></div></div>
+  <div class="character-row"><div class="avatar">👧🏻</div><div class="comic-bubble">Ana hace otra gran pregunta al club:</div></div>
+  <div class="info-box" style="font-style:italic;background:#f5f5f5;border-color:#ccc;">"Si las personas eligen los datos con los que aprende una máquina... ¿eso significa que los datos también importan mucho?"</div>
+  <div class="options-grid" id="n2-q2-opts"></div>
+  <div class="feedback-box" id="n2-fb-q2" style="display:none"></div>
+  <button class="btn-main" id="n2-next-q2" style="display:none" onclick="pc();goTo('n2-final')">Ver el reto final</button>
+</div>
+<div class="screen" id="n2-final">
+  <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+  <div class="stars">⭐⭐⭐</div>
+  <div class="title-main">¡Completaste el nivel 2!</div>
+  <div class="info-box" style="text-align:center;">Aprendiste que las máquinas aprenden gracias a datos, algoritmos y entrenamiento. Y que detrás de todo eso siempre hay personas que toman decisiones importantes.</div>
+  <div class="challenge-box">
+    <div class="ch-title">🎯 Tu reto fuera del juego</div>
+    <div class="ch-text">Busca a un adulto de confianza y pregúntale:<br><br><em>"¿Crees que importa quién elige los datos con los que aprende una computadora? ¿Por qué?"</em></div>
+  </div>
+  <button class="btn-green" onclick="pc();completeLevel(2);goTo('home')">Volver al inicio</button>
+  <div class="copyright">Recurso diseñado por Camila Suárez Acevedo © 2026 · Todos los derechos reservados</div>
+</div>
+
+<!-- NIVEL 3 -->
+<div class="screen" id="n3-intro">
+  <div class="level-badge">Nivel 3 · ¿Qué es la IA generativa?</div>
+  <div class="title-main">La sala de creación</div>
+  <div class="subtitle">El club descubre una IA diferente: una que no solo aprende, sino que también crea.</div>
+  <div class="character-row"><div class="avatar">👧🏽</div><div class="comic-bubble">Hoy encontramos algo nuevo. El profe Miguel nos mostró una IA que puede escribir textos, hacer imágenes y hasta imitar voces. ¿Cómo es posible eso?</div></div>
+  <button class="btn-main" onclick="pc();goTo('n3-s1')">¡Vamos a descubrirlo!</button>
+  <div class="copyright">Recurso diseñado por Camila Suárez Acevedo © 2026 · Todos los derechos reservados</div>
+</div>
+<div class="screen" id="n3-s1">
+  <div class="level-badge">Momento 1 · Concepto</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:15%"></div></div>
+  <div class="character-row"><div class="avatar">👨🏽‍🏫</div><div class="comic-bubble">La IA generativa aprendió de tantos textos, imágenes y sonidos que ahora puede crear cosas nuevas. Pero no las <em>inventa</em> sola: predice qué viene después.</div></div>
+  <div class="info-box">Imagina que alguien te lee miles de cuentos. Con el tiempo, si te preguntan "había una vez una princesa que...", tú podrías continuar la historia porque aprendiste cómo suelen seguir.<br><br>La IAG hace algo parecido: predice qué palabra, imagen o sonido tiene más sentido que siga.<br><br>Personas decidieron qué mostrarle, cómo entrenarla y para qué usarla. Esas decisiones importan mucho.</div>
+  <button class="btn-main" onclick="pc();goTo('n3-s2')">Entendido, ¡siguiente!</button>
+</div>
+<div class="screen" id="n3-s2">
+  <div class="level-badge">Momento 1 · IA generativa vs. IA que reconoce</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:28%"></div></div>
+  <div class="character-row"><div class="avatar">👧🏻</div><div class="comic-bubble">Ana hizo una tabla para entender la diferencia. ¡Mírala!</div></div>
+  <div class="compare-grid">
+    <div class="compare-card">
+      <div class="compare-title">IA que reconoce</div>
+      <div class="compare-item">Identifica si una foto tiene un perro</div>
+      <div class="compare-item">Reconoce tu cara para desbloquear el teléfono</div>
+      <div class="compare-item">Detecta si un correo es spam</div>
+    </div>
+    <div class="compare-card" style="border-color:#81667A;">
+      <div class="compare-title">IA generativa</div>
+      <div class="compare-item">Escribe un texto a partir de una pregunta</div>
+      <div class="compare-item">Crea una imagen a partir de una descripción</div>
+      <div class="compare-item">Imita la voz de una persona</div>
+    </div>
+  </div>
+  <div class="info-box" style="font-size:14px;background:#f5f5f5;border-color:#ccc;">Ejemplos de IAG que usan adultos hoy: <strong>Gemini</strong> (escribe textos), <strong>DALL·E</strong> (crea imágenes), filtros de cámara que transforman fotos con IA.</div>
+  <button class="btn-main" onclick="pc();goTo('n3-s3')">¡A practicar!</button>
+</div>
+<div class="screen" id="n3-s3">
+  <div class="level-badge">Momento 2 · Verdadero o falso</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:50%"></div></div>
+  <div class="character-row"><div class="avatar">👦🏿</div><div class="comic-bubble">Tomás escuchó varias cosas sobre la IAG. ¿Cuáles son verdaderas y cuáles son falsas?</div></div>
+  <div class="hint">Toca Verdadero o Falso para cada afirmación</div>
+  <div class="tf-stack" id="n3-tf-stack"></div>
+  <div class="feedback-box" id="n3-fb-tf" style="display:none"></div>
+  <button class="btn-main" id="n3-next-tf" style="display:none" onclick="pc();goTo('n3-s4')">Continuar</button>
+</div>
+<div class="screen" id="n3-s4">
+  <div class="level-badge">Momento 3 · Reflexión</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:80%"></div></div>
+  <div class="character-row"><div class="avatar">👦🏿</div><div class="comic-bubble">Tomás hace una gran pregunta al club:</div></div>
+  <div class="info-box" style="font-style:italic;background:#f5f5f5;border-color:#ccc;">"Si la IAG puede escribir cuentos, hacer dibujos y hablar... ¿significa que piensa y siente como nosotros?"</div>
+  <div class="options-grid" id="n3-q-opts"></div>
+  <div class="feedback-box" id="n3-fb-q" style="display:none"></div>
+  <button class="btn-main" id="n3-next-q" style="display:none" onclick="pc();goTo('n3-final')">Ver el reto final</button>
+</div>
+<div class="screen" id="n3-final">
+  <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+  <div class="stars">⭐⭐⭐</div>
+  <div class="title-main">¡Completaste el nivel 3!</div>
+  <div class="info-box" style="text-align:center;">Aprendiste que la IA generativa predice y crea a partir de patrones. Que es diferente a otras IA porque genera contenido nuevo. Y que no piensa ni siente: sigue patrones decididos por personas.</div>
+  <div class="challenge-box">
+    <div class="ch-title">🎯 Tu reto fuera del juego</div>
+    <div class="ch-text">Busca a un adulto de confianza y pregúntale:<br><br><em>"¿Has usado alguna vez una inteligencia artificial que crea textos, imágenes o voces? ¿Para qué la usaste?"</em></div>
+  </div>
+  <button class="btn-green" onclick="pc();completeLevel(3);goTo('home')">Volver al inicio</button>
+  <div class="copyright">Recurso diseñado por Camila Suárez Acevedo © 2026 · Todos los derechos reservados</div>
+</div>
+
+<!-- NIVEL 4 -->
+<div class="screen" id="n4-intro">
+  <div class="level-badge">Nivel 4 · ¿Qué puede salir mal?</div>
+  <div class="title-main">El club investiga los problemas</div>
+  <div class="subtitle">La IA tiene muchas posibilidades, pero también puede causar problemas. El club quiere entenderlos para actuar con criterio.</div>
+  <div class="character-row"><div class="avatar">👧🏽</div><div class="comic-bubble">Hoy decidimos hacer algo difícil pero importante: hablar de los problemas que puede traer la IA. El profe Miguel dice que entenderlos nos hace más inteligentes.</div></div>
+  <button class="btn-main" onclick="pc();goTo('n4-s1')">¡Vamos a investigar!</button>
+  <div class="copyright">Recurso diseñado por Camila Suárez Acevedo © 2026 · Todos los derechos reservados</div>
+</div>
+<div class="screen" id="n4-s1">
+  <div class="level-badge">Momento 1 · Concepto</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:12%"></div></div>
+  <div class="character-row"><div class="avatar">👨🏽‍🏫</div><div class="comic-bubble">Como la IA la crean y usan personas, también puede tener los problemas que tenemos las personas. Conocerlos nos ayuda a usarla mejor.</div></div>
+  <div class="info-box">La IA puede ser muy útil, pero también puede equivocarse, ser injusta, dañar el planeta o afectar nuestras relaciones.<br><br>Lo importante no es tenerle miedo, sino aprender a reconocer cuándo algo no está bien y saber qué hacer.</div>
+  <button class="btn-main" onclick="pc();goTo('n4-s2')">Entendido, ¡siguiente!</button>
+</div>
+<div class="screen" id="n4-s2">
+  <div class="level-badge">Momento 1 · Los cinco problemas</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:26%"></div></div>
+  <div class="character-row"><div class="avatar">👧🏻</div><div class="comic-bubble">Ana hizo una lista con los cinco problemas que encontró el club.</div></div>
+  <div class="problems-grid">
+    <div class="problem-card"><div class="problem-icon">❌</div><div class="problem-title">Errores en los datos</div><div class="problem-desc">Si los datos están mal, la IA aprende mal y da respuestas equivocadas.</div></div>
+    <div class="problem-card"><div class="problem-icon">⚖️</div><div class="problem-title">Resultados injustos</div><div class="problem-desc">A veces la IA trata diferente a personas por su apariencia, idioma u origen.</div></div>
+    <div class="problem-card"><div class="problem-icon">🔒</div><div class="problem-title">Falta de respeto</div><div class="problem-desc">Puede usarse para crear información falsa o imágenes que no son reales.</div></div>
+    <div class="problem-card"><div class="problem-icon">🌍</div><div class="problem-title">Costo para el planeta</div><div class="problem-desc">Entrenar y usar IA consume mucha energía y agua. Eso afecta el medioambiente.</div></div>
+    <div class="problem-card" style="grid-column:span 2;"><div class="problem-icon">💬</div><div class="problem-title">Riesgos para las relaciones</div><div class="problem-desc">La IA siempre responde y nunca te dice que estás equivocado... ¿eso es siempre bueno? Depender demasiado puede alejarnos de las personas reales.</div></div>
+  </div>
+  <button class="btn-main" onclick="pc();goTo('n4-s3')">¡A practicar!</button>
+</div>
+<div class="screen" id="n4-s3">
+  <div class="level-badge">Momento 2 · ¿Qué problema es este?</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:52%"></div></div>
+  <div class="character-row"><div class="avatar">👦🏿</div><div class="comic-bubble">Tomás encontró varios casos reales. ¿Puedes identificar qué tipo de problema tiene cada uno?</div></div>
+  <div class="hint">Toca el tipo de problema que corresponde</div>
+  <div class="scenario-stack" id="n4-scenario-stack"></div>
+  <div class="feedback-box" id="n4-fb-scenarios" style="display:none"></div>
+  <button class="btn-main" id="n4-next-scenarios" style="display:none" onclick="pc();goTo('n4-s4')">Continuar</button>
+</div>
+<div class="screen" id="n4-s4">
+  <div class="level-badge">Momento 3 · Reflexión</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:82%"></div></div>
+  <div class="character-row"><div class="avatar">👧🏽</div><div class="comic-bubble">María hace la pregunta más importante del día al club:</div></div>
+  <div class="info-box" style="font-style:italic;background:#f5f5f5;border-color:#ccc;">"Si la IA puede equivocarse o causar problemas... ¿qué podemos hacer nosotros cuando algo no nos parece bien?"</div>
+  <div class="options-grid" id="n4-q-opts"></div>
+  <div class="feedback-box" id="n4-fb-q" style="display:none"></div>
+  <button class="btn-main" id="n4-next-q" style="display:none" onclick="pc();goTo('n4-final')">Ver el reto final</button>
+</div>
+<div class="screen" id="n4-final">
+  <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+  <div class="stars">⭐⭐⭐</div>
+  <div class="title-main">¡Completaste el nivel 4!</div>
+  <div class="info-box" style="text-align:center;">Aprendiste que la IA puede tener errores, ser injusta, crear información falsa, dañar el planeta y afectar nuestras relaciones. Conocer estos problemas es para actuar con criterio.</div>
+  <div class="challenge-box">
+    <div class="ch-title">🎯 Tu reto fuera del juego</div>
+    <div class="ch-text">Busca a un adulto de confianza y pregúntale:<br><br><em>"¿Alguna vez una tecnología te dio información equivocada o te hizo sentir que algo no estaba bien? ¿Qué hiciste?"</em></div>
+  </div>
+  <button class="btn-green" onclick="pc();completeLevel(4);goTo('home')">Volver al inicio</button>
+  <div class="copyright">Recurso diseñado por Camila Suárez Acevedo © 2026 · Todos los derechos reservados</div>
+</div>
+
+<!-- NIVEL 5 -->
+<div class="screen" id="n5-intro">
+  <div class="level-badge">Nivel 5 · Usar la IA con criterio</div>
+  <div class="title-main">El último día del club</div>
+  <div class="subtitle">María y sus amigos integran todo lo que aprendieron. Hoy el club toma decisiones.</div>
+  <div class="character-row"><div class="avatar">👧🏽</div><div class="comic-bubble">¡Llegamos al último día del club! El profe Miguel dice que lo más importante no es saber todo sobre IA, sino saber qué preguntas hacer. ¡Vamos a demostrarlo!</div></div>
+  <button class="btn-main" onclick="pc();goTo('n5-s1')">¡Último nivel!</button>
+  <div class="copyright">Recurso diseñado por Camila Suárez Acevedo © 2026 · Todos los derechos reservados</div>
+</div>
+<div class="screen" id="n5-s1">
+  <div class="level-badge">Momento 1 · Lo que aprendimos</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:10%"></div></div>
+  <div class="character-row"><div class="avatar">👨🏽‍🏫</div><div class="comic-bubble">El profe Miguel repasa con el club todo lo que aprendieron.</div></div>
+  <div class="info-box">En este club descubrimos que:<br><br>🔹 La IA es una herramienta creada por <strong>personas</strong>, no un robot mágico.<br><br>🔹 Aprende de <strong>datos</strong> que personas organizan y deciden.<br><br>🔹 La IA generativa <strong>predice y crea</strong>, pero no piensa ni siente.<br><br>🔹 Puede cometer <strong>errores</strong>, ser injusta y afectar el planeta y las relaciones.<br><br>🔹 Usarla con <strong>criterio</strong> significa saber cuándo usarla, cuándo no, y a quién preguntarle qué.</div>
+  <button class="btn-main" onclick="pc();goTo('n5-s2')">¡A tomar decisiones!</button>
+</div>
+<div class="screen" id="n5-s2">
+  <div class="level-badge">Momento 2 · ¿Qué harías tú?</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:28%"></div></div>
+  <div class="character-row"><div class="avatar">👦🏿</div><div class="comic-bubble">Tomás tiene tres situaciones del mundo real. No hay respuesta incorrecta — lo importante es pensar.</div></div>
+  <div class="hint">Toca la opción que más te convenza</div>
+  <div class="scenario-stack" id="n5-decision-stack"></div>
+  <div class="feedback-box" id="n5-fb-decisions" style="display:none"></div>
+  <button class="btn-main" id="n5-next-decisions" style="display:none" onclick="pc();goTo('n5-s3')">Continuar</button>
+</div>
+<div class="screen" id="n5-s3">
+  <div class="level-badge">Momento 2B · ¿A quién le pregunto?</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:48%"></div></div>
+  <div class="character-row"><div class="avatar">👧🏻</div><div class="comic-bubble">Ana descubrió algo importante: no todas las preguntas son para la IAG. ¿Puedes ayudarla a decidir?</div></div>
+  <div class="hint">¿IAG, buscador o persona?</div>
+  <div class="scenario-stack" id="n5-ask-stack"></div>
+  <div class="feedback-box" id="n5-fb-ask" style="display:none"></div>
+  <button class="btn-main" id="n5-next-ask" style="display:none" onclick="pc();goTo('n5-s4')">Continuar</button>
+</div>
+<div class="screen" id="n5-s4">
+  <div class="level-badge">Momento 3 · Reflexión final</div>
+  <div class="progress-bar"><div class="progress-fill" style="width:72%"></div></div>
+  <div class="character-row"><div class="avatar">👧🏽</div><div class="comic-bubble">María le hace la pregunta final al club — y a ti:</div></div>
+  <div class="info-box" style="font-style:italic;background:#f5f5f5;border-color:#ccc;">"De todo lo que aprendiste en el Club de las Preguntas, ¿qué es lo más importante que te llevas?"</div>
+  <div class="options-grid" id="n5-q-opts"></div>
+  <div class="feedback-box" id="n5-fb-q" style="display:none"></div>
+  <button class="btn-main" id="n5-next-q" style="display:none" onclick="pc();goTo('n5-challenge')">Ver el reto final</button>
+</div>
+<div class="screen" id="n5-challenge">
+  <div class="progress-bar"><div class="progress-fill" style="width:88%"></div></div>
+  <div class="challenge-box">
+    <div class="ch-title">🎯 Tu reto final fuera del juego</div>
+    <div class="ch-text">Busca a un adulto de confianza y cuéntale:<br><br><em>"Aprendí tres cosas sobre la inteligencia artificial que quiero contarte."</em><br><br>Dile cuáles son las tres cosas más importantes que aprendiste en el club de María.</div>
+  </div>
+  <button class="btn-main" onclick="pc();goTo('n5-badge')">¡Quiero mi insignia!</button>
+</div>
+<div class="screen" id="n5-badge">
+  <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+  <div class="stars">⭐⭐⭐⭐⭐</div>
+  <div class="title-main">¡Completaste los 5 niveles!</div>
+  <div class="info-box" style="text-align:center;">Eres oficialmente miembro del Club de las Preguntas. Escribe tu nombre para recibir tu insignia.</div>
+  <input class="name-input" id="badge-name" type="text" placeholder="Escribe tu nombre aquí..." maxlength="24" oninput="onNameInput()" />
+  <button class="btn-main" id="gen-btn" style="display:none" onclick="generateBadge()">¡Generar mi insignia!</button>
+  <div id="badge-wrap" style="display:none;flex-direction:column;align-items:center;gap:14px;">
+    <canvas id="badge-canvas" width="340" height="340" style="max-width:100%;border-radius:50%;"></canvas>
+    <div class="share-note">🌟 ¡Comparte tu insignia con tus amigos y familiares y cuéntales lo que aprendiste en el Club de las Preguntas!</div>
+    <button class="btn-green" onclick="downloadBadge()">Guardar en mi dispositivo</button>
+    <button class="btn-light" onclick="pc();completeLevel(5);goTo('home')">Volver al inicio</button>
+  </div>
+  <div class="copyright">Recurso diseñado por Camila Suárez Acevedo © 2026 · Todos los derechos reservados</div>
+</div>
+
+</div><!-- end #game -->
+</div><!-- end #app -->
+
+<script>
+// ── AUDIO ──
+let audioCtx=null;
+function ga(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+function pc(){try{const c=ga(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=600;o.type='sine';g.gain.setValueAtTime(0.12,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.08);o.start();o.stop(c.currentTime+0.08);}catch(e){}}
+function pCorrect(){try{const c=ga();[523,659,784].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=f;o.type='sine';const t=c.currentTime+i*0.12;g.gain.setValueAtTime(0.15,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.18);o.start(t);o.stop(t+0.18);});}catch(e){}}
+function pWrong(){try{const c=ga(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=280;o.type='sine';g.gain.setValueAtTime(0.12,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.22);o.start();o.stop(c.currentTime+0.22);}catch(e){}}
+function pStar(){try{const c=ga();[880,1100].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=f;o.type='sine';const t=c.currentTime+i*0.08;g.gain.setValueAtTime(0.1,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.12);o.start(t);o.stop(t+0.12);});}catch(e){}}
+function spawnStar(el){pStar();const r=el.getBoundingClientRect();const s=document.createElement('div');s.className='star-pop';s.textContent='⭐';s.style.left=(r.left+r.width/2-14)+'px';s.style.top=(r.top-10)+'px';document.body.appendChild(s);setTimeout(()=>s.remove(),950);}
+
+// ── NAV ──
+function goTo(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo({top:0,behavior:'smooth'});}
+
+// ── LEVELS COMPLETED ──
+let completed=new Set();
+function completeLevel(n){completed.add(n);buildLevelGrid();}
+function buildLevelGrid(){
+  const levels=[
+    {n:1,icon:'🤖',title:'¿Qué es la IA?',desc:'Descubre qué es y dónde está',screen:'n1-intro'},
+    {n:2,icon:'📊',title:'¿Cómo aprende?',desc:'Datos, algoritmos y entrenamiento',screen:'n2-intro'},
+    {n:3,icon:'✨',title:'IA generativa',desc:'La IA que crea cosas nuevas',screen:'n3-intro'},
+    {n:4,icon:'⚠️',title:'¿Qué puede salir mal?',desc:'Problemas y responsabilidad',screen:'n4-intro'},
+    {n:5,icon:'🎯',title:'Usar con criterio',desc:'Decisiones y preguntas',screen:'n5-intro'}
+  ];
+  const grid=document.getElementById('level-grid');
+  grid.innerHTML='';
+  levels.forEach(l=>{
+    const card=document.createElement('div');
+    card.className='level-card'+(completed.has(l.n)?' completed':'');
+    card.innerHTML=`<div class="lc-num">${completed.has(l.n)?'✅':l.icon}</div><div class="lc-title">Nivel ${l.n} · ${l.title}</div><div class="lc-desc">${l.desc}</div>`;
+    card.onclick=()=>{pc();startLevel(l.n,l.screen);};
+    grid.appendChild(card);
+  });
+}
+
+function startLevel(n,screen){
+  if(n===1)resetN1();
+  if(n===2)resetN2();
+  if(n===3)resetN3();
+  if(n===4)resetN4();
+  if(n===5)resetN5();
+  goTo(screen);
+}
+
+// ── HELPERS ──
+function shuffle(a){const arr=[...a];for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+function buildOpts(cid,opts,onAnswer){
+  const c=document.getElementById(cid);c.innerHTML='';
+  shuffle(opts).forEach(o=>{
+    const b=document.createElement('button');b.textContent=o.text;
+    b.style.cssText='background-color:#B6CB9E;color:#2e2a35;border:2px solid #92B4A7;border-radius:12px;padding:14px 14px;font-size:15px;font-weight:500;cursor:pointer;text-align:center;line-height:1.45;width:100%;';
+    b.onclick=()=>{pc();onAnswer(b,o);};c.appendChild(b);
+  });
+}
+function lockOpts(cid){document.getElementById(cid).querySelectorAll('button').forEach(b=>{b.disabled=true;b.style.cursor='default';});}
+function showFb(id,html,isWrong=false){const el=document.getElementById(id);el.innerHTML=html;el.style.display='block';if(isWrong)el.classList.add('wrong');}
+function showNext(id){document.getElementById(id).style.display='inline-block';}
+function resetFb(ids,nexts){
+  ids.forEach(id=>{const el=document.getElementById(id);if(el){el.style.display='none';el.classList.remove('wrong');el.innerHTML='';}});
+  nexts.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+}
+
+// ── LEVEL 1 ──
+const n1SortItems=[{id:'si-1',label:'YouTube te sugiere videos',answer:'ia'},{id:'si-2',label:'Un lápiz escribe',answer:'no'},{id:'si-3',label:'El teléfono reconoce tu cara',answer:'ia'},{id:'si-4',label:'Una calculadora suma números',answer:'no'},{id:'si-5',label:'Un traductor automático',answer:'ia'},{id:'si-6',label:'Un libro de papel',answer:'no'}];
+let n1Selected=null,n1SortState={};
+function resetN1(){
+  n1Selected=null;n1SortState={};
+  document.getElementById('n1-placed-ia').innerHTML='';
+  document.getElementById('n1-placed-no').innerHTML='';
+  resetFb(['n1-fb-q1','n1-fb-q2','n1-fb-sort'],['n1-next-q1','n1-next-q2','n1-check-sort','n1-next-sort']);
+  buildOpts('n1-q1-opts',[{text:'No, las personas la crean y entrenan',correct:true},{text:'Sí, Tomás tiene razón',correct:false},{text:'Sí, porque las máquinas son muy listas',correct:false},{text:'No sé, depende del robot',correct:false}],(b,o)=>{
+    lockOpts('n1-q1-opts');
+    if(o.correct){pCorrect();spawnStar(b);b.style.backgroundColor='#D1F0B1';b.style.borderColor='#92B4A7';b.style.color='#2d5a3d';showFb('n1-fb-q1','✓ ¡Exacto! La IA no piensa sola. Personas la diseñan, eligen los datos y deciden para qué usarla.');}
+    else{pWrong();b.style.backgroundColor='#fdecea';b.style.borderColor='#c0392b';b.style.color='#922b21';showFb('n1-fb-q1','✗ No exactamente. La IA no es un robot que piensa solo. La crean y entrenan equipos de personas.',true);}
+    showNext('n1-next-q1');
+  });
+  buildOpts('n1-q2-opts',[{text:'Sí, porque los datos y decisiones los ponen personas',correct:true},{text:'No, las máquinas no se equivocan nunca',correct:false},{text:'Solo se equivoca si se daña físicamente',correct:false},{text:'Depende si es un robot o no',correct:false}],(b,o)=>{
+    lockOpts('n1-q2-opts');
+    if(o.correct){pCorrect();spawnStar(b);b.style.backgroundColor='#D1F0B1';b.style.borderColor='#92B4A7';b.style.color='#2d5a3d';showFb('n1-fb-q2','✓ ¡Muy bien! Como la IA aprende de datos que recopilan personas, puede repetir errores o creencias que están en esos datos.');}
+    else{pWrong();b.style.backgroundColor='#fdecea';b.style.borderColor='#c0392b';b.style.color='#922b21';showFb('n1-fb-q2','✗ Pensémoslo de nuevo. La IA aprende de datos que recopilan y eligen personas. Si esos datos tienen errores, la IA los puede repetir.',true);}
+    showNext('n1-next-q2');
+  });
+  buildSortItems();
+}
+function buildSortItems(){
+  const src=document.getElementById('n1-sort-source');src.innerHTML='';
+  shuffle(n1SortItems).forEach(item=>{
+    const d=document.createElement('div');
+    d.id=item.id;d.setAttribute('data-answer',item.answer);d.textContent=item.label;
+    d.style.cssText='background-color:#D1F0B1;color:#2e2a35;border:2px solid #92B4A7;border-radius:8px;padding:9px 11px;font-size:14px;cursor:pointer;text-align:center;font-weight:500;user-select:none;';
+    d.onclick=()=>{pc();n1SelectItem(item.id);};
+    src.appendChild(d);
+  });
+}
+function n1SelectItem(id){
+  const el=document.getElementById(id);
+  if(!el||el.classList.contains('used'))return;
+  if(n1Selected===id){el.style.transform='';el.style.borderColor='#92B4A7';n1Selected=null;document.querySelectorAll('.sort-col').forEach(c=>c.classList.remove('highlight'));return;}
+  document.querySelectorAll('[id^="si-"]:not(.used)').forEach(i=>{i.style.transform='';i.style.borderColor='#92B4A7';});
+  el.style.transform='scale(1.03)';el.style.borderColor='#81667A';n1Selected=id;
+  document.querySelectorAll('.sort-col').forEach(c=>c.classList.add('highlight'));
+}
+function n1DropToCol(col){
+  if(!n1Selected)return;
+  const el=document.getElementById(n1Selected);if(!el)return;
+  el.style.transform='';el.classList.add('used');el.style.visibility='hidden';
+  n1SortState[n1Selected]={col,answer:el.getAttribute('data-answer')};
+  const p=document.createElement('div');p.className='placed-pending';p.setAttribute('data-id',n1Selected);p.setAttribute('data-answer',el.getAttribute('data-answer'));
+  p.textContent=el.textContent;p.style.cssText='background-color:#D1F0B1;color:#2e2a35;border:2px solid #92B4A7;border-radius:8px;padding:9px 11px;font-size:14px;text-align:center;font-weight:500;cursor:default;margin-bottom:6px;';
+  document.getElementById('n1-placed-'+col).appendChild(p);
+  n1Selected=null;document.querySelectorAll('.sort-col').forEach(c=>c.classList.remove('highlight'));
+  if(Object.keys(n1SortState).length===6)showNext('n1-check-sort');
+}
+function n1CheckSort(){
+  let correct=0;
+  document.querySelectorAll('.placed-pending').forEach(el=>{
+    const id=el.getAttribute('data-id');const ans=el.getAttribute('data-answer');
+    const col=el.closest('#n1-placed-ia')?'ia':'no';
+    if(ans===col){el.style.backgroundColor='#92B4A7';el.style.borderColor='#92B4A7';el.style.color='white';correct++;}
+    else{el.style.backgroundColor='#fdecea';el.style.borderColor='#c0392b';el.style.color='#922b21';}
+    el.classList.remove('placed-pending');
+  });
+  document.getElementById('n1-check-sort').style.display='none';
+  if(correct===6){pCorrect();showFb('n1-fb-sort','✓ ¡Perfecto! La calculadora y el lápiz hacen exactamente lo que se les indica. La IA aprende de ejemplos que personas le muestran.');}
+  else{pWrong();showFb('n1-fb-sort','✗ Casi. La IA aprende de datos y mejora con el tiempo. Una calculadora solo hace lo que le pides, siempre igual.',true);}
+  showNext('n1-next-sort');
+}
+
+// ── LEVEL 2 ──
+const n2MatchPairs=[{concept:'Datos',desc:'Fotos, textos y números que la máquina usa para aprender'},{concept:'Algoritmo',desc:'Instrucciones que le dicen a la máquina cómo encontrar patrones'},{concept:'Entrenamiento',desc:'El proceso en que la máquina practica y mejora sus respuestas'}];
+let n2SelectedConcept=null,n2MatchedCount=0;
+function resetN2(){
+  n2SelectedConcept=null;n2MatchedCount=0;
+  resetFb(['n2-fb-q1','n2-fb-q2','n2-fb-match'],['n2-next-q1','n2-next-q2','n2-next-match']);
+  buildOpts('n2-q1-opts',[{text:'Puede que no reconozca bien a los perros de otros colores',correct:true},{text:'No pasa nada, las computadoras lo saben todo',correct:false},{text:'Aprenderá sola a reconocer todos los perros',correct:false},{text:'Solo afecta si los perros son muy grandes',correct:false}],(b,o)=>{
+    lockOpts('n2-q1-opts');
+    if(o.correct){pCorrect();spawnStar(b);b.style.backgroundColor='#D1F0B1';b.style.borderColor='#92B4A7';b.style.color='#2d5a3d';showFb('n2-fb-q1','✓ ¡Exacto! Una máquina solo aprende de los ejemplos que las personas le muestran. Por eso quién elige los datos tiene una gran responsabilidad.');}
+    else{pWrong();b.style.backgroundColor='#fdecea';b.style.borderColor='#c0392b';b.style.color='#922b21';showFb('n2-fb-q1','✗ Pensémoslo de nuevo. Una máquina solo aprende de los ejemplos que las personas le muestran. Si solo vio perros blancos, puede confundirse.',true);}
+    showNext('n2-next-q1');
+  });
+  buildOpts('n2-q2-opts',[{text:'Sí, los datos definen qué aprende y qué no aprende la máquina',correct:true},{text:'No, los datos no importan si el algoritmo es bueno',correct:false},{text:'Solo importan los datos si la máquina es muy nueva',correct:false},{text:'Los datos no tienen nada que ver con el aprendizaje',correct:false}],(b,o)=>{
+    lockOpts('n2-q2-opts');
+    if(o.correct){pCorrect();spawnStar(b);b.style.backgroundColor='#D1F0B1';b.style.borderColor='#92B4A7';b.style.color='#2d5a3d';showFb('n2-fb-q2','✓ ¡Muy bien! Los datos son el punto de partida de todo. Si tienen errores o le faltan ejemplos, la máquina aprenderá de forma incompleta.');}
+    else{pWrong();b.style.backgroundColor='#fdecea';b.style.borderColor='#c0392b';b.style.color='#922b21';showFb('n2-fb-q2','✗ Pensémoslo de nuevo. Los datos son la base de todo el aprendizaje. Sin buenos datos, ni el mejor algoritmo produce buenos resultados.',true);}
+    showNext('n2-next-q2');
+  });
+  buildMatch();
+}
+function buildMatch(){
+  n2SelectedConcept=null;n2MatchedCount=0;
+  const left=shuffle([...n2MatchPairs]),right=shuffle([...n2MatchPairs]);
+  const grid=document.getElementById('n2-match-grid');grid.innerHTML='';
+  const ROW='72px';
+  left.forEach((pair,i)=>{
+    const lc=document.createElement('div');lc.className='match-left-cell';lc.style.height=ROW;
+    const li=document.createElement('div');li.setAttribute('data-concept',pair.concept);li.setAttribute('data-matched','false');li.textContent=pair.concept;
+    li.style.cssText='height:100%;border-radius:10px;padding:10px 12px;font-size:14px;font-weight:500;color:#2e2a35;text-align:center;cursor:pointer;border:2px solid #92B4A7;transition:all 0.18s;display:flex;align-items:center;justify-content:center;background-color:#D1F0B1;';
+    li.onclick=()=>{pc();n2SelectConcept(li,pair.concept);};lc.appendChild(li);
+    const ac=document.createElement('div');ac.className='match-arrow-cell';ac.style.height=ROW;ac.textContent='→';
+    const rc=document.createElement('div');rc.className='match-right-cell';rc.style.height=ROW;
+    const ri=document.createElement('div');ri.setAttribute('data-correct-concept',right[i].concept);ri.setAttribute('data-matched','false');ri.textContent=right[i].desc;
+    ri.style.cssText='height:100%;border-radius:10px;padding:10px 12px;font-size:13px;color:#5a5265;text-align:center;border:2px solid #e0dcd8;background-color:#f5f5f5;line-height:1.45;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.18s;';
+    ri.onclick=()=>{pc();n2TryMatch(ri);};rc.appendChild(ri);
+    grid.appendChild(lc);grid.appendChild(ac);grid.appendChild(rc);
+  });
+}
+function n2SelectConcept(el,concept){
+  if(el.getAttribute('data-matched')==='true')return;
+  if(n2SelectedConcept===concept){el.style.borderColor='#92B4A7';el.style.transform='';n2SelectedConcept=null;return;}
+  document.querySelectorAll('[data-concept]:not([data-matched="true"])').forEach(l=>{l.style.borderColor='#92B4A7';l.style.transform='';});
+  el.style.borderColor='#81667A';el.style.transform='scale(1.03)';n2SelectedConcept=concept;
+}
+function n2TryMatch(ri){
+  if(!n2SelectedConcept)return;if(ri.getAttribute('data-matched')==='true')return;
+  const correct=ri.getAttribute('data-correct-concept');
+  const li=document.querySelector(`[data-concept="${n2SelectedConcept}"]`);
+  if(n2SelectedConcept===correct){
+    pCorrect();spawnStar(ri);
+    li.style.backgroundColor='#92B4A7';li.style.borderColor='#92B4A7';li.style.color='white';li.style.cursor='default';li.style.transform='';li.setAttribute('data-matched','true');li.onclick=null;
+    ri.style.backgroundColor='#D1F0B1';ri.style.borderColor='#92B4A7';ri.style.color='#2d5a3d';ri.setAttribute('data-matched','true');ri.onclick=null;
+    n2MatchedCount++;
+    if(n2MatchedCount===n2MatchPairs.length){setTimeout(()=>{showFb('n2-fb-match','✓ ¡Perfecto! Conectaste todos los conceptos. Recuerda: si los datos no son variados o tienen errores, la máquina aprenderá de forma incompleta.');showNext('n2-next-match');},400);}
+  } else {
+    pWrong();ri.style.backgroundColor='#fdecea';ri.style.borderColor='#c0392b';
+    setTimeout(()=>{ri.style.backgroundColor='#f5f5f5';ri.style.borderColor='#e0dcd8';},700);
+  }
+  n2SelectedConcept=null;
+  document.querySelectorAll('[data-concept]:not([data-matched="true"])').forEach(l=>{l.style.borderColor='#92B4A7';l.style.transform='';});
+}
+
+// ── LEVEL 3 ──
+const n3TFItems=[
+  {statement:'La IA generativa inventa cosas completamente solas, sin haber aprendido de nada antes.',correct:false,fb:'Falso. La IAG aprende primero de miles de textos, imágenes o sonidos que personas recopilaron. Solo después puede generar cosas nuevas.'},
+  {statement:'Gemini y otros sistemas de IAG fueron creados y entrenados por equipos de personas.',correct:true,fb:'Verdadero. Detrás de cada herramienta de IAG hay equipos de personas que tomaron decisiones sobre cómo entrenarla y para qué fines.'},
+  {statement:'La IA generativa puede crear una imagen a partir de una descripción escrita.',correct:true,fb:'Verdadero. Ese es uno de sus usos más conocidos. Una persona escribe una descripción y la IAG genera una imagen basándose en los patrones que aprendió.'},
+  {statement:'Cuando la IAG escribe un texto, está pensando y sintiendo como una persona.',correct:false,fb:'Falso. La IAG predice qué palabras tienen más sentido. No piensa ni siente: es una herramienta muy sofisticada hecha por personas.'}
+];
+let n3TFAnswered=0;
+function resetN3(){
+  n3TFAnswered=0;
+  resetFb(['n3-fb-tf','n3-fb-q'],['n3-next-tf','n3-next-q']);
+  buildTF();
+  buildOpts('n3-q-opts',[{text:'No, predice patrones pero no piensa ni siente',correct:true},{text:'Sí, porque puede escribir y hablar como personas',correct:false},{text:'Sí, si la entrenaron con muchos datos',correct:false},{text:'Depende de qué tan nueva sea la IA',correct:false}],(b,o)=>{
+    lockOpts('n3-q-opts');
+    if(o.correct){pCorrect();spawnStar(b);b.style.backgroundColor='#D1F0B1';b.style.borderColor='#92B4A7';b.style.color='#2d5a3d';showFb('n3-fb-q','✓ ¡Exacto! La IAG predice qué viene después basándose en patrones. No tiene emociones ni conciencia. Es una herramienta creada y controlada por personas.');}
+    else{pWrong();b.style.backgroundColor='#fdecea';b.style.borderColor='#c0392b';b.style.color='#922b21';showFb('n3-fb-q','✗ Pensémoslo de nuevo. La IAG puede producir textos y hablar, pero eso no significa que piense o sienta. Sigue patrones aprendidos.',true);}
+    showNext('n3-next-q');
+  });
+}
+function buildTF(){
+  n3TFAnswered=0;const stack=document.getElementById('n3-tf-stack');stack.innerHTML='';
+  shuffle(n3TFItems).forEach((item,idx)=>{
+    const card=document.createElement('div');card.className='tf-card';
+    const stmt=document.createElement('div');stmt.className='tf-statement';stmt.textContent='"'+item.statement+'"';
+    const btns=document.createElement('div');btns.className='tf-btns';
+    const fb=document.createElement('div');fb.className='tf-feedback';
+    [true,false].forEach(val=>{
+      const b=document.createElement('button');b.textContent=val?'✓ Verdadero':'✗ Falso';
+      b.style.cssText='flex:1;background-color:#B6CB9E;color:#2e2a35;border:2px solid #92B4A7;border-radius:10px;padding:10px 8px;font-size:14px;font-weight:500;cursor:pointer;';
+      b.onclick=()=>{
+        pc();btns.querySelectorAll('button').forEach(x=>{x.disabled=true;x.style.cursor='default';});
+        fb.style.display='block';
+        if(val===item.correct){pCorrect();spawnStar(b);b.style.backgroundColor='#D1F0B1';b.style.borderColor='#92B4A7';b.style.color='#2d5a3d';fb.className='tf-feedback correct';fb.textContent='✓ '+item.fb;}
+        else{pWrong();b.style.backgroundColor='#fdecea';b.style.borderColor='#c0392b';b.style.color='#922b21';fb.className='tf-feedback wrong2';fb.textContent='✗ '+item.fb;}
+        n3TFAnswered++;
+        if(n3TFAnswered===n3TFItems.length){setTimeout(()=>{showFb('n3-fb-tf','¡Respondiste todas las afirmaciones! Recuerda: la IAG es poderosa, pero siempre hay personas detrás que la crean, la entrenan y deciden cómo usarla.');showNext('n3-next-tf');},400);}
+      };btns.appendChild(b);
+    });
+    card.appendChild(stmt);card.appendChild(btns);card.appendChild(fb);stack.appendChild(card);
+  });
+}
+
+// ── LEVEL 4 ──
+const n4Scenarios=[
+  {text:'Una IA de traducción funciona muy bien en inglés y español, pero comete muchos errores al traducir idiomas de comunidades indígenas porque casi no tiene ejemplos de esos idiomas.',options:['Errores en los datos','Resultados injustos','Costo para el planeta','Riesgos para las relaciones'],correct:'Resultados injustos',fb:'✓ Así es. Cuando la IA no tiene suficientes ejemplos de ciertos grupos, puede tratarlos de forma diferente o inequitativa.'},
+  {text:'Sofía usa una IA para que le haga todas sus tareas. Ya no practica sola, no pregunta a sus compañeros y prefiere pedirle todo a la IA antes que pensar por su cuenta.',options:['Errores en los datos','Riesgos para las relaciones','Falta de respeto','Costo para el planeta'],correct:'Riesgos para las relaciones',fb:'✓ Exacto. Depender demasiado de la IA puede hacer que dejemos de practicar, de pensar y de conectar con otras personas.'},
+  {text:'Entrenar un sistema de IA grande puede consumir tanta energía como la que usa un hogar durante varios años, y también necesita grandes cantidades de agua para enfriar los servidores.',options:['Costo para el planeta','Errores en los datos','Falta de respeto','Resultados injustos'],correct:'Costo para el planeta',fb:'✓ Muy bien. El impacto ambiental de la IA es real pero poco visible. Por eso es importante usar estas tecnologías de forma responsable.'}
+];
+let n4ScenariosAnswered=0;
+function resetN4(){
+  n4ScenariosAnswered=0;
+  resetFb(['n4-fb-scenarios','n4-fb-q'],['n4-next-scenarios','n4-next-q']);
+  buildScenarios('n4-scenario-stack',n4Scenarios,'n4ScenariosAnswered','n4-fb-scenarios','n4-next-scenarios');
+  buildOpts('n4-q-opts',[{text:'Preguntar, dudar y pedir ayuda a un adulto de confianza',correct:true},{text:'No usar la IA nunca más para evitar problemas',correct:false},{text:'Aceptarlo porque la tecnología siempre tiene razón',correct:false},{text:'Esperar a que las máquinas lo resuelvan solas',correct:false}],(b,o)=>{
+    lockOpts('n4-q-opts');
+    if(o.correct){pCorrect();spawnStar(b);b.style.backgroundColor='#D1F0B1';b.style.borderColor='#92B4A7';b.style.color='#2d5a3d';showFb('n4-fb-q','✓ ¡Exacto! Cuando algo no nos parece bien, lo más importante es no quedarnos callados. Preguntar, dudar y buscar a un adulto de confianza son las mejores herramientas.');}
+    else{pWrong();b.style.backgroundColor='#fdecea';b.style.borderColor='#c0392b';b.style.color='#922b21';showFb('n4-fb-q','✗ Pensémoslo de nuevo. No se trata de dejar de usar la tecnología, sino de usarla con criterio. Y cuando algo no está bien, la mejor opción es preguntar y buscar ayuda.',true);}
+    showNext('n4-next-q');
+  });
+}
+
+// ── LEVEL 5 ──
+const n5Decisions=[
+  {text:'Una IA te ayuda a escribir una redacción para el colegio. ¿Qué harías?',options:['La entrego tal cual','La leo, la corrijo y agrego mis ideas','Le pregunto a un adulto si está bien usarla así'],fb:['Puede funcionar, pero si no la revisas ni agregas tus ideas, no aprendes tú — aprende la máquina por ti.','¡Muy bien pensado! Usar la IA como punto de partida y luego agregarle tus propias ideas es una forma de usarla con criterio.','¡Excelente instinto! Hablar con un adulto cuando tienes dudas sobre cómo usar la tecnología siempre es una buena idea.']},
+  {text:'Una IA te dice que cierta información es verdadera, pero no estás seguro.',options:['La creo, la IA no se equivoca','Busco en otra fuente para verificar','Le pregunto a un adulto de confianza'],fb:['La IA puede cometer errores y a veces "inventa" información que suena real. Siempre vale la pena verificar.','¡Perfecto! Verificar la información en otras fuentes es exactamente lo que hay que hacer.','¡Muy bien! Pedir ayuda a un adulto cuando algo no nos convence es una forma inteligente de actuar.']},
+  {text:'Tu amigo prefiere preguntarle todo a una IA en lugar de hablar contigo o con sus familiares.',options:['No pasa nada, es su decisión','Le cuento lo que aprendí sobre los riesgos para las relaciones','Le pregunto cómo se siente y qué le gusta de usarla'],fb:['Tienes razón en respetar sus decisiones, pero compartir lo que sabes también es valioso.','¡Genial! Compartir lo que aprendiste es una forma de cuidar a tus amigos.','¡Muy empático! Entender por qué alguien usa la tecnología de cierta manera es el primer paso para tener una conversación honesta.']}
+];
+const n5AskCases=[
+  {text:'Quieres saber qué películas están dando en el cine este fin de semana.',options:['Le pregunto a una IAG','Busco en Google o en la página del cine','Le pregunto a un adulto'],fb:['La IAG no siempre tiene información actualizada. Para saber qué hay en cartelera hoy, es mejor buscar directamente en Google o en la página del cine.','¡Exacto! Para información actual y específica como carteleras, un buscador es más confiable que una IAG.','¡También funciona! Pero si el adulto tampoco sabe, lo mejor es buscar en Google o en la página del cine.']},
+  {text:'Quieres entender por qué el cielo es azul.',options:['Le pregunto a una IAG','Busco en Google','Le pregunto a un adulto o a mi profe'],fb:['¡Muy válido! La IAG puede explicar muy bien conceptos científicos como este. Solo recuerda verificar si tienes dudas.','¡También funciona! Los buscadores te llevan a fuentes confiables como enciclopedias o páginas científicas.','¡Excelente! Preguntar a personas que saben del tema es siempre una buena opción.']},
+  {text:'Te sientes triste y no sabes por qué. ¿A quién le cuentas?',options:['Le cuento a una IAG','Busco en Google cómo sentirme mejor','Le cuento a alguien de confianza'],fb:['La IAG puede dar consejos generales, pero no te conoce ni puede acompañarte de verdad. Para los sentimientos, siempre es mejor hablar con una persona real.','Buscar información puede ayudar un poco, pero cuando estás triste lo más importante es sentirte acompañado.','¡Exactamente! Cuando tenemos sentimientos difíciles, hablar con alguien de confianza es siempre la mejor opción.']}
+];
+let n5DecisionsAnswered=0,n5AskAnswered=0;
+function resetN5(){
+  n5DecisionsAnswered=0;n5AskAnswered=0;
+  resetFb(['n5-fb-decisions','n5-fb-ask','n5-fb-q'],['n5-next-decisions','n5-next-ask','n5-next-q']);
+  document.getElementById('badge-name').value='';
+  document.getElementById('gen-btn').style.display='none';
+  document.getElementById('badge-wrap').style.display='none';
+  buildDecisionStack('n5-decision-stack',n5Decisions,'n5DecisionsAnswered','n5-fb-decisions','n5-next-decisions','¡Tomaste todas las decisiones! Recuerda: no hay una sola respuesta correcta. Lo importante es pensar y no quedarse callado cuando algo no está bien.');
+  buildDecisionStack('n5-ask-stack',n5AskCases,'n5AskAnswered','n5-fb-ask','n5-next-ask','¡Muy bien! Saber a quién preguntarle según el tipo de pregunta es una habilidad importante. No todo es para la IAG, y hay cosas que solo pueden responder personas que nos conocen.');
+  buildOpts('n5-q-opts',[{text:'Que la IA la crean personas y por eso debemos usarla con criterio',correct:true},{text:'Que la IA sabe más que nosotros en todo',correct:false},{text:'Que es mejor no usar tecnología para estar seguros',correct:false},{text:'Que solo los adultos pueden entender la IA',correct:false}],(b,o)=>{
+    lockOpts('n5-q-opts');
+    if(o.correct){pCorrect();spawnStar(b);b.style.backgroundColor='#D1F0B1';b.style.borderColor='#92B4A7';b.style.color='#2d5a3d';showFb('n5-fb-q','✓ ¡Exactamente! Saber que la IA la crean y usan personas es el fundamento de todo lo demás. Nos recuerda que nosotros también podemos preguntar, cuestionar y actuar.');}
+    else{pWrong();b.style.backgroundColor='#fdecea';b.style.borderColor='#c0392b';b.style.color='#922b21';showFb('n5-fb-q','✗ Pensémoslo de nuevo. La IA es poderosa, pero no lo sabe todo. No se trata de evitarla, sino de usarla con criterio. ¡Tú también puedes entenderla!',true);}
+    showNext('n5-next-q');
+  });
+}
+
+// ── GENERIC SCENARIO BUILDER ──
+function buildScenarios(stackId,items,counterVar,fbId,nextId){
+  window[counterVar]=0;
+  const stack=document.getElementById(stackId);stack.innerHTML='';
+  shuffle(items).forEach((item,idx)=>{
+    const card=document.createElement('div');card.className='scenario-card';
+    const text=document.createElement('div');text.className='scenario-text';text.textContent=item.text;
+    const btns=document.createElement('div');btns.className='scenario-btns';
+    const fb=document.createElement('div');fb.className='scenario-fb';
+    shuffle(item.options).forEach(opt=>{
+      const b=document.createElement('button');b.textContent=opt;
+      b.style.cssText='background-color:#B6CB9E;color:#2e2a35;border:2px solid #92B4A7;border-radius:10px;padding:9px 12px;font-size:13px;font-weight:500;cursor:pointer;flex:1;min-width:100px;line-height:1.4;';
+      b.onclick=()=>{
+        pc();btns.querySelectorAll('button').forEach(x=>{x.disabled=true;x.style.cursor='default';});
+        const isCorrect=opt===item.correct;
+        b.style.backgroundColor=isCorrect?'#D1F0B1':'#fdecea';b.style.borderColor=isCorrect?'#92B4A7':'#c0392b';b.style.color=isCorrect?'#2d5a3d':'#922b21';
+        if(isCorrect){pCorrect();spawnStar(b);}else{pWrong();if(item.correct){const cb=Array.from(btns.querySelectorAll('button')).find(x=>x.textContent===item.correct);if(cb){cb.style.backgroundColor='#D1F0B1';cb.style.borderColor='#92B4A7';cb.style.color='#2d5a3d';}}}
+        fb.className='scenario-fb '+(isCorrect?'correct':'wrong2');
+        fb.textContent=(isCorrect?'✓ ':item.fb?'✗ ':'')+(item.fb?item.fb:item.fb);
+        fb.style.display='block';
+        window[counterVar]++;
+        if(window[counterVar]===items.length){setTimeout(()=>{const gfb=document.getElementById(fbId);gfb.innerHTML=window['__'+fbId+'_msg']||'¡Respondiste todos los casos!';gfb.style.display='block';showNext(nextId);},400);}
+      };btns.appendChild(b);
+    });
+    card.appendChild(text);card.appendChild(btns);card.appendChild(fb);stack.appendChild(card);
+  });
+}
+
+// ── GENERIC DECISION BUILDER ──
+function buildDecisionStack(stackId,items,counterVar,fbId,nextId,doneMsg){
+  window[counterVar]=0;window['__'+fbId+'_msg']=doneMsg;
+  const stack=document.getElementById(stackId);stack.innerHTML='';
+  shuffle(items).forEach((item,idx)=>{
+    const card=document.createElement('div');card.className='scenario-card';
+    const text=document.createElement('div');text.className='scenario-text';text.textContent=item.text;
+    const btns=document.createElement('div');btns.className='scenario-btns';
+    const fb=document.createElement('div');fb.className='scenario-fb correct';
+    item.options.forEach((opt,oi)=>{
+      const b=document.createElement('button');b.textContent=opt;
+      b.style.cssText='background-color:#B6CB9E;color:#2e2a35;border:2px solid #92B4A7;border-radius:10px;padding:9px 12px;font-size:13px;font-weight:500;cursor:pointer;flex:1;min-width:100px;line-height:1.4;';
+      b.onclick=()=>{
+        pc();btns.querySelectorAll('button').forEach(x=>{x.disabled=true;x.style.cursor='default';});
+        b.style.backgroundColor='#D1F0B1';b.style.borderColor='#92B4A7';b.style.color='#2d5a3d';
+        pCorrect();spawnStar(b);
+        fb.textContent='✓ '+item.fb[oi];fb.style.display='block';
+        window[counterVar]++;
+        if(window[counterVar]===items.length){setTimeout(()=>{const gfb=document.getElementById(fbId);gfb.innerHTML=window['__'+fbId+'_msg']||'';gfb.style.display='block';showNext(nextId);},400);}
+      };btns.appendChild(b);
+    });
+    card.appendChild(text);card.appendChild(btns);card.appendChild(fb);stack.appendChild(card);
+  });
+}
+
+// ── BADGE ──
+function onNameInput(){const v=document.getElementById('badge-name').value.trim();document.getElementById('gen-btn').style.display=v.length>0?'inline-block':'none';}
+function generateBadge(){
+  const name=document.getElementById('badge-name').value.trim();if(!name)return;
+  const canvas=document.getElementById('badge-canvas');const ctx=canvas.getContext('2d');
+  const W=340,H=340,cx=W/2,cy=H/2,R=150;ctx.clearRect(0,0,W,H);
+  for(let i=0;i<40;i++){const a=(i/40)*Math.PI*2;const x=cx+(R+9)*Math.cos(a),y=cy+(R+9)*Math.sin(a);ctx.beginPath();ctx.arc(x,y,i%4===0?4.5:2.5,0,Math.PI*2);ctx.fillStyle=i%4===0?'#81667A':'#B6CB9E';ctx.fill();}
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.strokeStyle='#81667A';ctx.lineWidth=5;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,R-6,0,Math.PI*2);ctx.fillStyle='#D1F0B1';ctx.fill();
+  ctx.beginPath();ctx.arc(cx,cy,R-6,0,Math.PI*2);ctx.strokeStyle='#92B4A7';ctx.lineWidth=3;ctx.stroke();
+  ctx.save();ctx.font='500 14px sans-serif';ctx.fillStyle='#81667A';
+  drawArcText(ctx,'CLUB DE LAS PREGUNTAS',cx,cy,R-26,-Math.PI*0.75,Math.PI*0.75,true);ctx.restore();
+  ctx.beginPath();ctx.arc(cx,cy,R-34,-Math.PI*0.62,-Math.PI*0.38);ctx.strokeStyle='#92B4A7';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,R-34,Math.PI*0.38,Math.PI*0.62);ctx.strokeStyle='#92B4A7';ctx.lineWidth=1.5;ctx.stroke();
+  const ix=cx,iy=cy-42;ctx.save();ctx.strokeStyle='#81667A';ctx.lineWidth=5;ctx.lineCap='round';
+  ctx.beginPath();ctx.arc(ix,iy,26,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(ix+18,iy+18);ctx.lineTo(ix+36,iy+36);ctx.stroke();
+  ctx.fillStyle='#81667A';drawStar(ctx,ix,iy,5,13,6);ctx.restore();
+  ctx.save();let fs=24;ctx.font=`500 ${fs}px sans-serif`;
+  while(ctx.measureText(name).width>210&&fs>13){fs--;ctx.font=`500 ${fs}px sans-serif`;}
+  ctx.fillStyle='#2e2a35';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(name,cx,cy+32);ctx.restore();
+  ctx.save();ctx.strokeStyle='#92B4A7';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(cx-70,cy+48);ctx.lineTo(cx+70,cy+48);ctx.stroke();ctx.restore();
+  ctx.save();ctx.font='13px sans-serif';ctx.fillStyle='#5a5265';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('miembro',cx,cy+65);ctx.restore();
+  ctx.save();ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillStyle='#81667A';ctx.fillText('★  ★  ★',cx,cy+90);ctx.restore();
+  document.getElementById('badge-wrap').style.display='flex';pStar();
+}
+function drawStar(ctx,cx,cy,pts,outer,inner){ctx.beginPath();for(let i=0;i<pts*2;i++){const a=(i*Math.PI)/pts-Math.PI/2;const r=i%2===0?outer:inner;i===0?ctx.moveTo(cx+r*Math.cos(a),cy+r*Math.sin(a)):ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));}ctx.closePath();ctx.fill();}
+function drawArcText(ctx,text,cx,cy,r,sa,ea,top){const chars=text.split('');const ta=ea-sa;const apc=ta/(chars.length-1);ctx.textAlign='center';ctx.textBaseline=top?'bottom':'top';chars.forEach((ch,i)=>{const ca=sa+i*apc;const x=cx+r*Math.cos(ca-Math.PI/2);const y=cy+r*Math.sin(ca-Math.PI/2);ctx.save();ctx.translate(x,y);ctx.rotate(ca+(top?0:Math.PI));ctx.fillText(ch,0,0);ctx.restore();});}
+function downloadBadge(){const c=document.getElementById('badge-canvas');const l=document.createElement('a');l.download='insignia-club-preguntas.png';l.href=c.toDataURL('image/png');l.click();}
+
+// ── INIT ──
+buildLevelGrid();
+</script>
+</body>
+</html>
